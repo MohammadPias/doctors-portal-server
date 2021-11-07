@@ -17,9 +17,14 @@ async function run() {
     try {
         await client.connect();
         const database = client.db("doctorsDb");
-        const collections = database.collection("user");
+        const appointCollections = database.collection("appointment");
 
-
+        app.post('/appointments', async (req, res) => {
+            const appointment = req.body;
+            const result = await appointCollections.insertOne(appointment);
+            console.log(result);
+            res.json(result)
+        })
     }
     catch {
         // await client.close();
