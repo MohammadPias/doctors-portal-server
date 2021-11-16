@@ -3,6 +3,9 @@ const cors = require('cors');
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
 const admin = require("firebase-admin");
+const ObjectId = require('mongodb').ObjectId;
+const fieUpload = require('express-fileupload');
+const fileUpload = require('express-fileupload');
 
 
 const app = express();
@@ -11,6 +14,7 @@ const port = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+app.use(fileUpload());
 
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 
@@ -43,6 +47,7 @@ async function run() {
         const database = client.db("doctorsDb");
         const appointCollections = database.collection("appointment");
         const userCollections = database.collection("users");
+        const doctorCollection = database.collection('doctors');
 
         // Get appointments api
         app.get('/appointments', async (req, res) => {
@@ -55,6 +60,14 @@ async function run() {
             const appointments = await cursor.toArray();
             res.send(appointments)
         });
+
+        // get appointment by id
+        app.get('/appointments/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await appointCollections.findOne(query);
+            res.send(result)
+        })
 
         app.post('/appointments', async (req, res) => {
             const appointment = req.body;
@@ -97,6 +110,29 @@ async function run() {
                 isAdmin = true;
             };
             res.send({ admin: isAdmin });
+        })
+
+        // add doctors collection
+        app.post('/doctors', async (req, res) => {
+            const name = req.body.name;
+            const email = req.body.email;
+            const pic = req.files.images;
+            const picData = pic.data;
+            const encodedPic = picData.toString('base64');
+            const imageBuffer = Buffer.from(encodedPic, 'base64');
+            const doctor = {
+                name,
+                email,
+                image: imageBuffer
+            }
+            const result = await doctorCollection.insertOne(doctor);
+            res.json(result)
+        });
+        // get all doctors
+        app.get('/doctors', async (req, res) => {
+            const cursor = doctorCollection.find({});
+            const result = await cursor.toArray();
+            res.send(result);
         })
 
     }
